@@ -1,9 +1,6 @@
 # proxmox-talos
 
-So, first of all, I'm following this [guide](https://www.talos.dev/v1.8/talos-guides/install/virtualized-platforms/proxmox/)
-And I'm checking out talhelper cli
-
-https://budimanjojo.github.io/talhelper/latest/getting-started/
+So, first of all, I'm following this [guide](https://www.talos.dev/v1.8/talos-guides/install/virtualized-platforms/proxmox/), And I'm checking out [talhelper cli](https://budimanjojo.github.io/talhelper/latest/getting-started/)
 
 I'm creating talconfig.yaml for my example cluster
 
