@@ -25,7 +25,17 @@ Then running these command to bootstrap it
 ```bash
 talosctl apply-config --insecure -n 10.1.0.20 -f clusterconfig/chivel-pi0.yaml
 talosctl apply-config --insecure -n 10.1.0.30 -f clusterconfig/chivel-talos-worker1.yaml
-
 talosctl bootstrap -n pi0
+```
+
+Get kubeconfig
+
+```bash
 talosctl kubeconfig .
+```
+
+Cleanup
+
+```bash
+talosctl reset --graceful=false --reboot
 ```
