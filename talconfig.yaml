@@ -1,0 +1,77 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/budimanjojo/talhelper/master/pkg/config/schemas/talconfig.json
+---
+# renovate: datasource=docker depName=ghcr.io/siderolabs/installer
+talosVersion: v1.8.2
+kubernetesVersion: v1.31.2
+
+clusterName: "chivel"
+endpoint: https://10.1.0.20:6443
+clusterPodNets:
+  - "10.69.0.0/16"
+clusterSvcNets:
+  - "10.96.0.0/16"
+additionalApiServerCertSans: &sans
+  - "10.1.0.20"
+  - 127.0.0.1 # KubePrism
+  - "chivel.local"
+additionalMachineCertSans: *sans
+
+allowSchedulingOnControlPlanes: true
+
+nodes:
+  - hostname: "pi0"
+    ipAddress: "10.1.0.20"
+    installDisk: "/dev/sda"
+    talosImageURL: factory.talos.dev/installer/a7bcadbc1b6d03c0e687be3a5d9789ef7113362a6a1a038653dfd16283a92b6b
+    controlPlane: true
+    nodeLabels:
+      role: master
+    machineSpec:
+      mode: metal
+      arch: amd64
+      secureboot: false
+      useUKI: false
+    networkInterfaces:
+      - deviceSelector:
+          hardwareAddr: "4e:77:90:32:b3:e7"
+        dhcp: false
+        addresses:
+          - "10.1.0.20/24"
+        routes:
+          - network: 0.0.0.0/0
+            gateway: "10.1.0.1"
+        mtu: 1500
+    schematic:
+      customization:
+        systemExtensions:
+          officialExtensions:
+            - siderolabs/qemu-guest-agent
+            - siderolabs/util-linux-tools
+  - hostname: "talos-worker1"
+    ipAddress: "10.1.0.30"
+    installDisk: "/dev/sda"
+    talosImageURL: factory.talos.dev/installer/a7bcadbc1b6d03c0e687be3a5d9789ef7113362a6a1a038653dfd16283a92b6b
+    controlPlane: false
+    nodeLabels:
+      role: worker
+    machineSpec:
+      mode: metal
+      arch: amd64
+      secureboot: false
+      useUKI: false
+    networkInterfaces:
+      - deviceSelector:
+          hardwareAddr: "bc:24:11:1a:f9:59"
+        dhcp: false
+        addresses:
+          - "10.1.0.30/24"
+        routes:
+          - network: 0.0.0.0/0
+            gateway: "10.1.0.1"
+        mtu: 1500
+    schematic:
+      customization:
+        systemExtensions:
+          officialExtensions:
+            - siderolabs/qemu-guest-agent
+            - siderolabs/util-linux-tools
