@@ -1,0 +1,53 @@
+---
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+version: "3"
+
+set: [pipefail]
+shopt: [globstar]
+
+vars:
+  TALHELPER_CLUSTER_DIR: "./clusterconfig"
+  TALHELPER_SECRET_FILE: "./talsecret.sops.yaml"
+  TALHELPER_CONFIG_FILE: "./talconfig.yaml"
+
+tasks:
+  default: task --list
+
+  sops:
+    desc: Bootstrap the Sops Age key
+    cmd: age-keygen --output {{.SOPS_AGE_KEY_FILE}}
+    status:
+      - test -f {{.SOPS_AGE_KEY_FILE}}
+
+  bootstrap-talos:
+    desc: Bootstrap the Talos cluster
+    cmds:
+      - talhelper gensecret > {{.TALHELPER_SECRET_FILE}}
+      - sops --encrypt --in-place {{.TALHELPER_SECRET_FILE}}
+      - talhelper genconfig --config-file {{.TALHELPER_CONFIG_FILE}} --secret-file {{.TALHELPER_SECRET_FILE}}
+      - talhelper gencommand apply --config-file {{.TALHELPER_CONFIG_FILE}} --out-dir {{.TALHELPER_CLUSTER_DIR}} --extra-flags="--insecure" | bash
+      - until talhelper gencommand bootstrap --config-file {{.TALHELPER_CONFIG_FILE}} --out-dir {{.TALHELPER_CLUSTER_DIR}} | bash; do sleep 10; done
+      - until talhelper gencommand kubeconfig --config-file {{.TALHELPER_CONFIG_FILE}} --out-dir {{.TALHELPER_CLUSTER_DIR}} --extra-flags="{{.ROOT_DIR}} --force" | bash; do sleep 10; done
+    deps:
+      - sops
+    preconditions:
+      - msg: Missing talhelper config file
+        sh: test -f {{.TALHELPER_CONFIG_FILE}}
+      - msg: Missing Sops config file
+        sh: test -f {{.SOPS_CONFIG_FILE}}
+      - msg: Missing Sops Age key file
+        sh: test -f {{.SOPS_AGE_KEY_FILE}}
+
+  reset:
+    desc: Reset nodes back to maintenance mode
+    cmd: "talhelper gencommand reset \
+      --config-file {{.TALHELPER_CONFIG_FILE}} \
+      --out-dir {{.TALHELPER_CLUSTER_DIR}} \
+      --extra-flags=\"--reboot --graceful=false --wait=false \
+      {{- if eq .CLI_FORCE false }} \
+      --system-labels-to-wipe STATE \
+      --system-labels-to-wipe EPHEMERAL \
+      {{ end }}\""
+    preconditions:
+      - msg: Missing talosconfig file
+        sh: test -f {{.TALOSCONFIG}}

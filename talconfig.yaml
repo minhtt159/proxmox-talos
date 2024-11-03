@@ -2,6 +2,7 @@
 ---
 # renovate: datasource=docker depName=ghcr.io/siderolabs/installer
 talosVersion: v1.8.2
+# renovate: datasource=docker depName=ghcr.io/siderolabs/kubelet
 kubernetesVersion: v1.31.2
 
 clusterName: "chivel"
@@ -21,16 +22,9 @@ allowSchedulingOnControlPlanes: true
 nodes:
   - hostname: "pi0"
     ipAddress: "10.1.0.20"
-    installDisk: "/dev/sda"
-    talosImageURL: factory.talos.dev/installer/a7bcadbc1b6d03c0e687be3a5d9789ef7113362a6a1a038653dfd16283a92b6b
+    installDisk: &default-disk "/dev/sda"
+    talosImageURL: &qemu-os factory.talos.dev/installer/fd348d98739b8a67b5ec9688914440959ef2446e2ad5cafdd839c9c356e40149
     controlPlane: true
-    nodeLabels:
-      role: master
-    machineSpec:
-      mode: metal
-      arch: amd64
-      secureboot: false
-      useUKI: false
     networkInterfaces:
       - deviceSelector:
           hardwareAddr: "4e:77:90:32:b3:e7"
@@ -41,24 +35,71 @@ nodes:
           - network: 0.0.0.0/0
             gateway: "10.1.0.1"
         mtu: 1500
-    schematic:
-      customization:
-        systemExtensions:
-          officialExtensions:
-            - siderolabs/qemu-guest-agent
-            - siderolabs/util-linux-tools
-  - hostname: "talos-worker1"
-    ipAddress: "10.1.0.30"
-    installDisk: "/dev/sda"
-    talosImageURL: factory.talos.dev/installer/a7bcadbc1b6d03c0e687be3a5d9789ef7113362a6a1a038653dfd16283a92b6b
+  - hostname: "pi1"
+    ipAddress: "10.1.0.21"
+    installDisk: *default-disk
+    talosImageURL: &rpi-os factory.talos.dev/installer/d9792964ae2a0d748b31778944ee772759558c33c1274ee9db774509ef52fb6f
     controlPlane: false
-    nodeLabels:
-      role: worker
-    machineSpec:
-      mode: metal
-      arch: amd64
-      secureboot: false
-      useUKI: false
+    networkInterfaces:
+      - deviceSelector:
+          hardwareAddr: "dc:a6:32:f1:4f:7e"
+        dhcp: false
+        addresses:
+          - "10.1.0.21/24"
+        routes:
+          - network: 0.0.0.0/0
+            gateway: "10.1.0.1"
+        mtu: 1500
+  # - hostname: "pi2"
+  #   ipAddress: "10.1.0.22"
+  #   installDisk: *default-disk
+  #   talosImageURL: *rpi-os
+  #   controlPlane: true
+  #   networkInterfaces:
+  #     - deviceSelector:
+  #         hardwareAddr: "dc:a6:32:f1:52:27"
+  #       dhcp: false
+  #       addresses:
+  #         - "10.1.0.22/24"
+  #       routes:
+  #         - network: 0.0.0.0/0
+  #           gateway: "10.1.0.1"
+  #       mtu: 1500
+  # - hostname: "pi3"
+  #   ipAddress: "10.1.0.23"
+  #   installDisk: *default-disk
+  #   talosImageURL: *rpi-os
+  #   controlPlane: false
+  #   networkInterfaces:
+  #     - deviceSelector:
+  #         hardwareAddr: "e4:5f:01:ac:4c:d8"
+  #       dhcp: false
+  #       addresses:
+  #         - "10.1.0.23/24"
+  #       routes:
+  #         - network: 0.0.0.0/0
+  #           gateway: "10.1.0.1"
+  #       mtu: 1500
+  # - hostname: "pi4"
+  #   ipAddress: "10.1.0.24"
+  #   installDisk: *default-disk
+  #   talosImageURL: *rpi-os
+  #   controlPlane: false
+  #   networkInterfaces:
+  #     - deviceSelector:
+  #         hardwareAddr: "e4:5f:01:ac:4a:17"
+  #       dhcp: false
+  #       addresses:
+  #         - "10.1.0.24/24"
+  #       routes:
+  #         - network: 0.0.0.0/0
+  #           gateway: "10.1.0.1"
+  #       mtu: 1500
+  - hostname: "talos-w1"
+    ipAddress: "10.1.0.30"
+    installDisk: *default-disk
+    talosImageURL: *qemu-os
+    controlPlane: false
     networkInterfaces:
       - deviceSelector:
           hardwareAddr: "bc:24:11:1a:f9:59"
@@ -69,9 +110,21 @@ nodes:
           - network: 0.0.0.0/0
             gateway: "10.1.0.1"
         mtu: 1500
-    schematic:
-      customization:
-        systemExtensions:
-          officialExtensions:
-            - siderolabs/qemu-guest-agent
-            - siderolabs/util-linux-tools
+
+patches:
+  - "@./global/disable-search-domain.yaml"
+  - "@./global/dns.yaml"
+  - "@./global/hostdns.yaml"
+  - "@./global/kubelet.yaml"
+  - "@./global/ntp.yaml"
+  - "@./global/sysctl.yaml"
+
+controlPlane:
+  patches:
+    - "@./controller/etcd.yaml"
+    - "@./controller/cluster-patch.yaml"
+    - "@./controller/node-label.yaml"
+
+worker:
+  patches:
+    - "@./worker/node-label.yaml"
