@@ -10,6 +10,9 @@ vars:
   TALHELPER_SECRET_FILE: "./talsecret.sops.yaml"
   TALHELPER_CONFIG_FILE: "./talconfig.yaml"
 
+env:
+  KUBECONFIG: "{{.ROOT_DIR}}/kubeconfig"
+
 tasks:
   default: task --list
 
@@ -22,12 +25,22 @@ tasks:
   bootstrap-talos:
     desc: Bootstrap the Talos cluster
     cmds:
+      # Generate new secret
       - talhelper gensecret > {{.TALHELPER_SECRET_FILE}}
+      # Encrypt secret file
       - sops --encrypt --in-place {{.TALHELPER_SECRET_FILE}}
+      # Generate Talos Node configs
       - talhelper genconfig --config-file {{.TALHELPER_CONFIG_FILE}} --secret-file {{.TALHELPER_SECRET_FILE}}
+      # Apply Talos Node configs
       - talhelper gencommand apply --config-file {{.TALHELPER_CONFIG_FILE}} --out-dir {{.TALHELPER_CLUSTER_DIR}} --extra-flags="--insecure" | bash
+      # Bootstrap etcd onto the cluster
       - until talhelper gencommand bootstrap --config-file {{.TALHELPER_CONFIG_FILE}} --out-dir {{.TALHELPER_CLUSTER_DIR}} | bash; do sleep 10; done
+      # Get Kubeconfig when it's available
       - until talhelper gencommand kubeconfig --config-file {{.TALHELPER_CONFIG_FILE}} --out-dir {{.TALHELPER_CLUSTER_DIR}} --extra-flags="{{.ROOT_DIR}} --force" | bash; do sleep 10; done
+      # Apply extra configs
+      - task: helm
+      # Make sure everything is healthy
+      - talosctl health --server=false
     deps:
       - sops
     preconditions:
@@ -38,6 +51,22 @@ tasks:
       - msg: Missing Sops Age key file
         sh: test -f {{.SOPS_AGE_KEY_FILE}}
 
+  helm:
+    internal: true
+    dir: ./bootstrap/
+    cmds:
+      # Wait all nodes to be available
+      - until kubectl wait --for=condition=Ready=False nodes --all --timeout=600s; do sleep 10; done
+      # Apply helmfile to install prerequisite for the cluster
+      - helmfile --file helmfile.yaml apply --skip-diff-on-install --suppress-diff
+      # Wait all nodes to be ready
+      - until kubectl wait --for=condition=Ready nodes --all --timeout=600s; do sleep 10; done
+    preconditions:
+      - msg: Missing kubeconfig
+        sh: test -f {{.KUBECONFIG}}
+      - msg: Missing helmfile
+        sh: test -f helmfile.yaml
+
   reset:
     desc: Reset nodes back to maintenance mode
     cmd: "talhelper gencommand reset \
@@ -47,7 +76,7 @@ tasks:
       {{- if eq .CLI_FORCE false }} \
       --system-labels-to-wipe STATE \
       --system-labels-to-wipe EPHEMERAL \
-      {{ end }}\""
+      {{ end }}\" | bash "
     preconditions:
       - msg: Missing talosconfig file
         sh: test -f {{.TALOSCONFIG}}

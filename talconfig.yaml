@@ -6,18 +6,22 @@ talosVersion: v1.8.2
 kubernetesVersion: v1.31.2
 
 clusterName: "chivel"
-endpoint: https://10.1.0.20:6443
+endpoint: https://10.1.0.6:6443
+
 clusterPodNets:
   - "10.69.0.0/16"
 clusterSvcNets:
   - "10.96.0.0/16"
+
 additionalApiServerCertSans: &sans
-  - "10.1.0.20"
+  - "10.1.0.6"
   - 127.0.0.1 # KubePrism
   - "chivel.local"
 additionalMachineCertSans: *sans
 
-allowSchedulingOnControlPlanes: true
+# Disable built-in Flannel to use Cilium
+cniConfig:
+  name: none
 
 nodes:
   - hostname: "pi0"
@@ -35,21 +39,23 @@ nodes:
           - network: 0.0.0.0/0
             gateway: "10.1.0.1"
         mtu: 1500
-  - hostname: "pi1"
-    ipAddress: "10.1.0.21"
-    installDisk: *default-disk
-    talosImageURL: &rpi-os factory.talos.dev/installer/d9792964ae2a0d748b31778944ee772759558c33c1274ee9db774509ef52fb6f
-    controlPlane: false
-    networkInterfaces:
-      - deviceSelector:
-          hardwareAddr: "dc:a6:32:f1:4f:7e"
-        dhcp: false
-        addresses:
-          - "10.1.0.21/24"
-        routes:
-          - network: 0.0.0.0/0
-            gateway: "10.1.0.1"
-        mtu: 1500
+        vip:
+          ip: "10.1.0.6"
+  # - hostname: "pi1"
+  #   ipAddress: "10.1.0.21"
+  #   installDisk: *default-disk
+  #   talosImageURL: &rpi-os factory.talos.dev/installer/d9792964ae2a0d748b31778944ee772759558c33c1274ee9db774509ef52fb6f
+  #   controlPlane: false
+  #   networkInterfaces:
+  #     - deviceSelector:
+  #         hardwareAddr: "dc:a6:32:f1:4f:7e"
+  #       dhcp: false
+  #       addresses:
+  #         - "10.1.0.21/24"
+  #       routes:
+  #         - network: 0.0.0.0/0
+  #           gateway: "10.1.0.1"
+  #       mtu: 1500
   # - hostname: "pi2"
   #   ipAddress: "10.1.0.22"
   #   installDisk: *default-disk
