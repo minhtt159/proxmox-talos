@@ -16,12 +16,6 @@ env:
 tasks:
   default: task --list
 
-  sops:
-    desc: Bootstrap the Sops Age key
-    cmd: age-keygen --output {{.SOPS_AGE_KEY_FILE}}
-    status:
-      - test -f {{.SOPS_AGE_KEY_FILE}}
-
   bootstrap-talos:
     desc: Bootstrap the Talos cluster
     cmds:
@@ -66,6 +60,20 @@ tasks:
         sh: test -f {{.KUBECONFIG}}
       - msg: Missing helmfile
         sh: test -f helmfile.yaml
+
+  bootstrap-secret:
+    desc: Init sops/age key and bootstrap secret
+    cmds:
+      - task: sops
+      - talhelper gensecret > {{.TALHELPER_SECRET_FILE}}
+      - sops --encrypt --in-place {{.TALHELPER_SECRET_FILE}}
+
+  sops:
+    internal: true
+    desc: Bootstrap the Sops Age key
+    cmd: age-keygen --output {{.SOPS_AGE_KEY_FILE}}
+    status:
+      - test -f {{.SOPS_AGE_KEY_FILE}}
 
   reset:
     desc: Reset nodes back to maintenance mode
