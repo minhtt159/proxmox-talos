@@ -19,10 +19,6 @@ tasks:
   bootstrap-talos:
     desc: Bootstrap the Talos cluster
     cmds:
-      # Generate new secret
-      - talhelper gensecret > {{.TALHELPER_SECRET_FILE}}
-      # Encrypt secret file
-      - sops --encrypt --in-place {{.TALHELPER_SECRET_FILE}}
       # Generate Talos Node configs
       - talhelper genconfig --config-file {{.TALHELPER_CONFIG_FILE}} --secret-file {{.TALHELPER_SECRET_FILE}}
       # Apply Talos Node configs
@@ -65,7 +61,9 @@ tasks:
     desc: Init sops/age key and bootstrap secret
     cmds:
       - task: sops
+      # Generate new secret
       - talhelper gensecret > {{.TALHELPER_SECRET_FILE}}
+      # Encrypt secret file
       - sops --encrypt --in-place {{.TALHELPER_SECRET_FILE}}
 
   sops:
